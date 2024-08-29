@@ -22,9 +22,28 @@ app.get("/", (req, res) => {
     res.render("home");
 });
 
-app.get("/login", (req, res) => {
-    res.render("login");
-});
+app.route("/login")
+    .get((req, res) => {
+        res.render("login");
+    })
+    .post((req, res) => {
+        const username = req.body.username;
+        const password = req.body.password;
+
+        User.findOne({
+            email: username
+        }).then((user) => {
+            if (user) {
+                if (user.password === password) {
+                    res.render("secrets");
+                } else {
+                    res.redirect("/wrong-password");
+                }
+            } else {
+                res.redirect("/no-account");
+            }
+        });
+    });
 
 app.route("/register")
     .get((req, res) => {
@@ -50,13 +69,19 @@ app.route("/register")
                 });
             }
         });
-
-        
     });
 
 
 app.get("/user-exists", (req, res) => {
     res.render("userExists");
+});
+
+app.get("/wrong-password", (req, res) => {
+    res.render("wrongPassword");
+});
+
+app.get('/no-account', (req, res) => {
+    res.render('noAccount');
 });
 
 app.listen(3000, () => {
