@@ -2,7 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const ejs = require("ejs");
-const encryption = require("mongoose-encryption");
+const bcrypt = require("bcrypt");
+const saltingRounds = 10;
 
 const app = express();
 
@@ -16,13 +17,6 @@ mongoose.connect("mongodb://localhost:27017/userDB");
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-});
-
-var secret = process.env.SECRET;
-
-userSchema.plugin(encryption, {
-    secret: secret,
-    encryptedFields: ["password"],
 });
 
 const User = new mongoose.model("User", userSchema);
@@ -43,11 +37,13 @@ app.route("/login")
             email: username,
         }).then((user) => {
             if (user) {
-                if (user.password === password) {
-                    res.render("secrets");
-                } else {
-                    res.redirect("/wrong-password");
-                }
+                bcrypt.compare(password, user.password, function (err, result) {
+                    if (result === true) {
+                        res.render("secrets");
+                    } else {
+                        res.redirect("/wrong-password");
+                    }
+                });
             } else {
                 res.redirect("/no-account");
             }
@@ -59,26 +55,30 @@ app.route("/register")
         res.render("register");
     })
     .post((req, res) => {
-        const newUser = new User({
-            email: req.body.username,
-            password: req.body.password,
-        });
+        bcrypt.genSalt(saltingRounds, function (err, salt) {
+            bcrypt.hash(req.body.password, salt, function (err, hash) {
+                const newUser = new User({
+                    email: req.body.username,
+                    password: hash,
+                });
 
-        User.findOne({
-            email: req.body.username,
-        }).then((user) => {
-            if (user) {
-                res.redirect("/user-exists");
-            } else {
-                newUser
-                    .save()
-                    .then(() => {
-                        res.render("secrets");
-                    })
-                    .catch((err) => {
-                        console.log(err);
-                    });
-            }
+                User.findOne({
+                    email: req.body.username,
+                }).then((user) => {
+                    if (user) {
+                        res.redirect("/user-exists");
+                    } else {
+                        newUser
+                            .save()
+                            .then(() => {
+                                res.render("secrets");
+                            })
+                            .catch((err) => {
+                                console.log(err);
+                            });
+                    }
+                });
+            });
         });
     });
 
