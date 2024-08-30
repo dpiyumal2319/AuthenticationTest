@@ -1,6 +1,8 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const ejs = require("ejs");
+const encryption = require("mongoose-encryption");
 
 const app = express();
 
@@ -14,6 +16,13 @@ mongoose.connect("mongodb://localhost:27017/userDB");
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
+});
+
+var secret = process.env.SECRET;
+
+userSchema.plugin(encryption, {
+    secret: secret,
+    encryptedFields: ["password"],
 });
 
 const User = new mongoose.model("User", userSchema);
@@ -31,7 +40,7 @@ app.route("/login")
         const password = req.body.password;
 
         User.findOne({
-            email: username
+            email: username,
         }).then((user) => {
             if (user) {
                 if (user.password === password) {
@@ -56,21 +65,22 @@ app.route("/register")
         });
 
         User.findOne({
-            email: req.body.username
+            email: req.body.username,
         }).then((user) => {
             if (user) {
                 res.redirect("/user-exists");
             } else {
-                newUser.save().then(() => {
-                    res.render("secrets");
-                }
-                ).catch((err) => {
-                    console.log(err);
-                });
+                newUser
+                    .save()
+                    .then(() => {
+                        res.render("secrets");
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                    });
             }
         });
     });
-
 
 app.get("/user-exists", (req, res) => {
     res.render("userExists");
@@ -80,8 +90,8 @@ app.get("/wrong-password", (req, res) => {
     res.render("wrongPassword");
 });
 
-app.get('/no-account', (req, res) => {
-    res.render('noAccount');
+app.get("/no-account", (req, res) => {
+    res.render("noAccount");
 });
 
 app.listen(3000, () => {
